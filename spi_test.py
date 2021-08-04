@@ -12,7 +12,24 @@ spi_device = 0
 
 spi = spidev.SpiDev()
 spi.open(spi_bus, spi_device)
-spi.max_speed_hz = 100000
+spi.max_speed_hz = 4000 
+#spi.max_speed_hz = 100000 
+
+def send_test(channel=None):
+    print('')
+    print('test send')
+
+    command = spi.xfer2([0x22])[0]
+    print(command)
+    time.sleep(1)
+    command = spi.xfer2([0x25])[0]
+    time.sleep(1)
+    print(command)
+
+    #num = 0x00
+    #for i in range(4):
+    #    command = spi.writebytes([num])
+    #    num = num + 1
 
 def send_receive(channel):
     try:
@@ -22,7 +39,9 @@ def send_receive(channel):
         send_byte = [x for x in range(0,128)] 
         data_recv = spi.xfer3(send_byte,128)
         '''
-        command = spi.xfer2([0x00])[0]
+        print('')
+        print('send_receive')
+        command = spi.xfer2([0x22])[0]
         print(command)
         if hex(command) == "0x22":
             print('Command: RESET')
@@ -40,10 +59,17 @@ def send_receive(channel):
     except Exception as e:
         print(e)
 
-GPIO.add_event_detect(23, GPIO.RISING, callback=send_receive, bouncetime=500)
+#GPIO.add_event_detect(23, GPIO.RISING, callback=send_test, bouncetime=500)
+#GPIO.add_event_detect(23, GPIO.RISING, callback=send_receive, bouncetime=500)
 
+#while True:
+#    pass 
+
+## FOR TESTING
 while True:
-    pass 
+    time.sleep(1)
+    send_test()
+
 '''
 while True:
     if GPIO.input(23):
