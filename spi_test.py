@@ -1,3 +1,4 @@
+import os
 import spidev
 import time
 import RPi.GPIO as GPIO
@@ -12,71 +13,75 @@ spi_device = 0
 
 spi = spidev.SpiDev()
 spi.open(spi_bus, spi_device)
-spi.max_speed_hz = 4000 
-#spi.max_speed_hz = 100000 
+#spi.max_speed_hz = 4000 
+#spi.max_speed_hz =  151000 
+spi.max_speed_hz =  145000      # NOTE: CLOCK STUFF IS WEIRD! 
 
-def send_test(channel=None):
-    print('')
-    print('test send')
+spi.no_cs = False
 
-    command = spi.xfer2([0x22])[0]
-    print(command)
-    time.sleep(1)
-    command = spi.xfer2([0x25])[0]
-    time.sleep(1)
-    print(command)
+ACK = 0xEE
+BINARY = False
 
-    #num = 0x00
-    #for i in range(4):
-    #    command = spi.writebytes([num])
-    #    num = num + 1
+# TODO: replace print statements with logging
 
-def send_receive(channel):
+def send_receive(channel=None):
     try:
-        # Send a null byte to check for value
-        #send_byte = [0x00]
-        '''
-        send_byte = [x for x in range(0,128)] 
-        data_recv = spi.xfer3(send_byte,128)
-        '''
+
         print('')
         print('send_receive')
-        command = spi.xfer2([0x22])[0]
-        print(command)
+        print('SENDING: ACK(`{}`)'.format(hex(ACK)))
+        print(hex(ACK))
+
+        ack_resp = spi.xfer([ACK])      # send 0xEE to MSP to start sequence
+        command = spi.readbytes(1)[0]   # byte a byte which will be the COMMAND FOR THE RPI
+   
         if hex(command) == "0x22":
             print('Command: RESET')
-            spi.xfer([command])
+            spi.writebytes([0x22])      # SEND CONFIRMATION (echo command)
         elif hex(command) == "0x25": 
-            print('packet command') 
-            res = spi.xfer([command])
-            print(res)
-            send_byte = [x for x in range(0,128)] 
-            data_recv = spi.xfer3(send_byte,128)
-            print(data_recv)
-            print("".join([chr(x) for x in data_recv]))
+            print('Command: PACKET')
+
+            if True:
+                fake = []
+                for i in range(127):
+                    fake.append(0x00)
+
+                spi.writebytes([0x25])  # SEND CONFIRMATION (echo command)
+                packet = spi.xfer(fake) # read PACKET
+            else: 
+                spi.writebytes([0x25])
+                packet = spi.readbytes(128)
+
+            #print('packet data')
+            #print(packet)
+            #print([hex(i) for i in packet])
+            #print("".join([chr(i) for i in packet]))
+
+             
+            bytes_str = bytes(bytearray([i for i in packet]))
+            #print(str(bytes_str))
+           
+            packet_count = len(os.listdir(os.path.join(os.getcwd(), "packets"))) # count files for filename usage
+            with open('packets/{}.txt'.format(int(packet_count)+1), 'w') as binary_file:
+                if not(BINARY):
+                    binary_file.write(str(bytes_str)) # saving as a str
+                else:
+                    binary_file.write(bytes_str) # saving as binary needs `wb` in open()
+                print('packet {} saved'.format(packet_count))
+            
         else:
-            print ("Response: "+str(hex(data_recv[0])))
+            print("ELSE!")
+            print(hex(command))
     except Exception as e:
         print(e)
 
-#GPIO.add_event_detect(23, GPIO.RISING, callback=send_test, bouncetime=500)
-#GPIO.add_event_detect(23, GPIO.RISING, callback=send_receive, bouncetime=500)
+# SETUP Interrupt
+GPIO.add_event_detect(23, GPIO.RISING, callback=send_receive, bouncetime=500)
 
-#while True:
-#    pass 
-
-## FOR TESTING
+# Main Loop
 while True:
-    time.sleep(1)
-    send_test()
+    pass 
 
-'''
-while True:
-    if GPIO.input(23):
-        print('HIGH')
-        send_receive()
-    else:
-        print('LOW')
-    time.sleep(0.15)
-'''
-#quit()
+print('####')
+print('####')
+
